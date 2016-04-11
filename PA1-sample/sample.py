@@ -39,7 +39,6 @@ def test(array, percent, runs, y_means, y_stds, x_runs):
 	y_stds.append(np.std(array) / runs)
 
 	x_runs.append(runs)
-	array = [0]*len(array) #set to 0 again to clear state
 
 '''
 Given array, run several tests on the array and plot the mean
@@ -52,6 +51,7 @@ def runTests():
 	x_runs = []
 
 	for n in [10, 100, 1000, 10000]:
+		array = [0]*len(array) #set to 0 to clear state
 		test(array, .1, n, y_means, y_stds, x_runs)
 
 	#plot means
