@@ -50,7 +50,7 @@ def runTests():
 	y_stds = []
 	x_runs = []
 
-	for n in [10, 100, 1000, 10000]:
+	for n in [10, 100, 1000, 10000, 100000]:
 		array = [0]*len(array) #set to 0 to clear state
 		test(array, .1, n, y_means, y_stds, x_runs)
 
