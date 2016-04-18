@@ -8,18 +8,17 @@ Given a csv filename, returns a numpy matrix of the data
 @param {dict} converters - dict where key is the column number, and value is
 the function to convert it. This is useful for string values
 '''
-def getMatrix(filename, converters):
-	# with open(filename) as file:
-	# 	row_count = sum(1 for row in file)
-	# 	return [0]*row_count
+def getMatrix(filename, converters=None):
 	matrix = np.loadtxt(open(filename,"rb"), delimiter=",", 
 		converters=converters)
 	return matrix
 
-'''
-Given a numpy matrix and percentage, return a test/train split of that percentage
-'''
+
 def sampleHelper(matrix, testPercent):
+	'''
+	Given a numpy matrix and percentage, return a test/train split 
+	(tuple) of that percentage
+	'''
 	length = len(matrix)
 	n_n = float(int(length*testPercent)) #number needed
 	n_r = length #number remaining
@@ -43,27 +42,54 @@ def sampleHelper(matrix, testPercent):
 
 	return test, train
 
-'''
-Main function. Given a csv filename, RNG seed, and percentage, return a tuple
-of 2 matrices:
-First, the train numpy matrix. Second the test numpy matrix.
-'''
-def sample(filename, converters, seed=0, testPercent=.1):
+
+def sample(matrix, seed=0, testPercent=.1):
+	'''
+	Given a numpy matrix, RNG seed, and percentage, return a tuple
+	of 4 matrices:
+	x_train, x_test, y_train, y_test
+	'''
 	random.seed(seed)
-	matrix = getMatrix(filename, converters)
 	test,train = sampleHelper(matrix, testPercent)
-	return test, train
 
-#########
+	x_train = train[:,0:len(train[0])-1]   #everything but targ col
+	y_train = train[:,len(train[0])-1]     #only targ column
 
-'''Hard-coded converter function for the Abalone dataset'''
-def convertAbalone(e):
-	if e=="M":
-		return 0
-	elif e=="F":
-		return 1
-	elif e=="I":
-		return 2
+	x_test = test[:,0:len(test[0])-1]  
+	y_test = test[:,len(test[0])-1]  
 
-converters = {0: convertAbalone}
-sample('data/abalone.data', converters)
+	return x_train, x_test, y_train, y_test
+
+def confusion_matrix(preds, y_test):
+	'''Get the confusion matrix for some predictions and some target'''
+	cats = np.unique(y_test)
+	size = len(cats)
+	cm = np.empty((size,size))
+
+	#i is row, j is col. so rows = true, cols = predicted
+	i = 0
+	for e_i in cats:
+		j = 0
+		for e_j in cats:
+			n = np.sum( np.logical_and(y_test == e_i, preds == e_j) )
+			cm[i,j] = n
+			j += 1
+		i += 1
+
+	return cm
+
+def plot_confusion_matrix(cm, categories):
+	'''
+	CREDITS TO SCIKIT-LEARN: 
+	http://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html
+
+	Given a 2d confusion matrix and its categories plot it.
+	Need to run plt.show() after calling this to actually render'''
+	plt.figure(figsize=(12,8))
+	plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+	plt.colorbar()
+	tick_marks = np.arange(len(categories))
+	plt.xticks(tick_marks, categories)
+	plt.yticks(tick_marks, categories)
+	plt.ylabel('Actual')
+	plt.xlabel('Predicted')
