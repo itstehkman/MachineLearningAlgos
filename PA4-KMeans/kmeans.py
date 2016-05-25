@@ -1,6 +1,8 @@
 import numpy as np
 from numpy import linalg as LA
 
+def append_ones(m):
+    return np.concatenate((m, np.ones((m.shape[0], 1))), axis=1)
 
 class KMeans:
     def __init__(self, k=3):
@@ -16,10 +18,14 @@ class KMeans:
         centroids = X[idx]  #index = centroid number
         k_for_data = [-1]*len(X)  #index = index of value in X
         clusters = {}  #mapping cluster numbers to their indices of X
+        means = [-1]*self.k  #index = cluster number
+        stds = [-1]*self.k  #index = cluster number
         changed = True
 
         while changed:
             changed = False
+            clusters = {}  #must recompute clusters each time
+
             #update clusters
             for i in range(len(X)):
                 min_dist = LA.norm(X[i] - centroids[0])
@@ -43,21 +49,32 @@ class KMeans:
                     centroids[k] = new_c
                     changed = True  #break when centroids converge
 
+        print "k=", self.k
+        for k in range(self.k):
+            means[k] = np.mean(X[list(clusters[k])],axis=0)
+            stds[k] = np.std(X[list(clusters[k])],axis=0)
+            print "cluster#", k
+            print "mean\n", means[k]
+            print "std\n", stds[k]
 
         WCSS = 0
         for i in range(len(X)):
             WCSS += LA.norm(X[i] - centroids[k_for_data[i]])
+
         self.centroids = centroids
         self.WCSS = WCSS
         self.clusters = clusters
+        self.means = means
+        self.stds = stds
 
-    def train_clusters(self, Y_train, X_test, Y_test):
+    def train_clusters(self, Y_train, X_test, Y_test, zscale=False):
         """
         Performs linear regression on each cluster and returns the rmse
         for each cluster.
         """
-        #assign clusters for X_test
+        #assign clusters for X_test_zscaled
         test_clusters = {}
+        k_for_data = {}
         for i in range(len(X_test)):
             min_dist = LA.norm(X_test[i] - self.centroids[0])
             min_k = 0
@@ -66,12 +83,14 @@ class KMeans:
                 if dist < min_dist:
                     min_dist = dist
                     min_k = j
+            k_for_data[i] = min_k
             if min_k not in test_clusters.keys():
                 test_clusters[min_k] = set()
             test_clusters[min_k].add(i)
 
         RMSE = 0
         #train and evaluate each cluster
+        beta = {}
         for k in self.clusters.keys():
             if k not in self.clusters.keys() or k not in test_clusters.keys():
                 continue #the dataset doesn't include both clusters
@@ -80,13 +99,15 @@ class KMeans:
             test_idx = list(test_clusters[k])
             X = self.X[train_idx]
             Y = Y_train[train_idx]
-            X2 = X_test[test_idx]
-            Y2 = Y_test[test_idx]
-            print X
-            beta, _, _, _ = np.linalg.lstsq(X, Y)
-            # root mean square error
-            print np.dot(X2, beta)
-            print Y2
-            RMSE += np.sqrt(np.mean((np.dot(X2, beta) - Y2) ** 2))
+            b, _, _, _ = np.linalg.lstsq(X, Y)
+            beta[k] = b
+
+        for i in range(len(X_test)):
+            b = beta[k_for_data[i]]
+            X = X_test[i]
+            Y = Y_test[i]
+            RMSE += (np.dot(X, b) - Y) ** 2
+        RMSE = np.sqrt(RMSE/len(X_test))
+
         print "k=", self.k, 'RMSE-abalone', RMSE
         self.RMSE = RMSE
